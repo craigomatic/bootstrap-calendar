@@ -14,5 +14,42 @@
 		<% }) %>
 	</div>
 	<hr>
-	<%= cal._week() %>
+	<!-- hack: needs the commented out call below to set the correct events context further down -->
+	<!--<%= cal._week() %>-->
+	
+    <!-- sort events into arrays for each day -->
+    <%
+        var multiDimArray = [];
+    
+        _.each(events, function(event) { 
+            if (multiDimArray[event.start_day] == undefined) {
+                multiDimArray[event.start_day] = [];
+            }
+
+            multiDimArray[event.start_day].push(event);
+        });
+    %>
+    <%= console.dir(multiDimArray) %>
+    <% _.each(multiDimArray, function(events_for_day) { %>
+            <div class="cal-row-fluid cal-cell1 cal-offset<%= _.first(events_for_day).start_day %>" style="display:inline-block; width:auto; position:absolute;">
+                <% if(events_for_day.length) { %>
+
+                <ul style="padding-left: 0px; list-style-type: none;">
+                    <% _.each(events_for_day, function(event){ %>
+                    <li>
+                        <div class="dh-<%= event['class'] %>" style="margin-bottom:5px;">
+                            <div style="font-size:18px"><%= event.title %></div>
+                            <%= event.description %>
+                            <br /><br />
+                            <%= event.startDisplay %>
+                        </div>
+                    </li>
+                    <% }) %>
+                </ul>
+
+                <% } else  { %>
+                <p>No classes today.</p>
+                <% }  %>
+            </div>
+    <% })  %>
 </div>
