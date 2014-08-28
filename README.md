@@ -22,7 +22,7 @@ Why did I start this project? Well, I believe there are no good full view calend
 
 ### Install
 
-You can install it with [bower](http://twitter.github.com/bower/) package manager.
+You can install it with [bower](http://bower.io/) package manager.
 
 	$ bower install bootstrap-calendar
 
@@ -50,7 +50,11 @@ You will need to include the bootstrap css and calendar css. Here is the minimum
 		<script type="text/javascript" src="js/vendor/underscore-min.js"></script>
 		<script type="text/javascript" src="js/calendar.js"></script>
 		<script type="text/javascript">
-			var calendar = $('#calendar').calendar();
+			var calendar = $("#calendar").calendar(
+				{
+					tmpl_path: "/tmpls/",
+					events_source: function () { return []; }
+				});			
 		</script>
 	</body>
 	</html>
@@ -91,7 +95,7 @@ It will send two parameters by `GET` named `from` and `to`, which will tell you 
 				"id": 293,
 				"title": "Event 1",
 				"url": "http://example.com",
-				"class": 'event-important',
+				"class": "event-important",
 				"start": 12039485678000, // Milliseconds
 				"end": 1234576967000 // Milliseconds
 			},
@@ -109,7 +113,7 @@ You can set events list array directly to `events_source` parameter.
                 "id": 293,
                 "title": "Event 1",
                 "url": "http://example.com",
-                "class": 'event-important',
+                "class": "event-important",
                 "start": 12039485678000, // Milliseconds
                 "end": 1234576967000 // Milliseconds
             },
@@ -127,7 +131,7 @@ Or you can use function. You have to return array of events.
                "id": 293,
                "title": "Event 1",
                "url": "http://example.com",
-               "class": 'event-important',
+               "class": "event-important",
                "start": 12039485678000, // Milliseconds
                "end": 1234576967000 // Milliseconds
            },
@@ -157,20 +161,43 @@ $db    = new PDO('mysql:host=localhost;dbname=testdb;charset=utf8', 'username', 
 $start = $_REQUEST['from'] / 1000;
 $end   = $_REQUEST['to'] / 1000;
 $sql   = sprintf('SELECT * FROM events WHERE `datetime` BETWEEN %s and %s',
-    $db->quote(date('Y-m-d', $start)), $db->quote(date('Y-m-d', $end)))
+    $db->quote(date('Y-m-d', $start)), $db->quote(date('Y-m-d', $end)));
 
-$out = array()
+$out = array();
 foreach($db->query($sql) as $row) {
     $out[] = array(
         'id' => $row->id,
         'title' => $row->name,
         'url' => Helper::url($row->id),
-        'start' => strtotime($row->datetime) . '000'
+        'start' => strtotime($row->datetime) . '000',
+        'end' => strtotime($row->datetime_end) .'000'
     );
 }
 
-echo json_encode($out);
+echo json_encode(array('success' => 1, 'result' => $out));
 exit;
+```
+
+Another example of PHP script (without connecting with the Database).
+
+```php
+<?php
+$out = array();
+ 
+ for($i=1; $i<=15; $i++){ 	//from day 01 to day 15
+	$data = date('Y-m-d', strtotime("+".$i." days"));
+	$out[] = array(
+     	'id' => $i,
+		'title' => 'Event name '.$i,
+		'url' => Helper::url($id),
+		'class' => 'event-important',
+		'start' => strtotime($data).'000'
+	);
+}
+ 
+echo json_encode(array('success' => 1, 'result' => $out));
+exit;
+?>
 ```
 
 ## Usage warning.
@@ -180,3 +207,62 @@ The following error will be displayed :
 Failed to load resource: Origin null is not allowed by Access-Control-Allow-Origin. 
 
 Using Ajax with local resources (file:///), is not permited. You will need to deploy this to the web instead.
+
+## Modal popup
+
+You can enable a bootstrap modal popup to show when clicking an event instead of redirecting to event.url. 
+To enable boostrap modal, first add the modal html to your page and provide boostrap-calendar with the ID:
+
+    <div class="modal hide fade" id="events-modal">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h3>Event</h3>
+        </div>
+        <div class="modal-body" style="height: 400px">
+        </div>
+        <div class="modal-footer">
+            <a href="#" data-dismiss="modal" class="btn">Close</a>
+        </div>
+    </div>
+
+and then set:
+
+	modal: "#events-modal"
+
+This will enable the modal, and populate it with an iframe with the contents of event.url .
+
+For Bootstrap v3, use
+
+    <div class="modal fade" id="events-modal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h3>Event</h3>
+                </div>
+                <div class="modal-body" style="height: 400px">
+                </div>
+                <div class="modal-footer">
+                    <a href="#" data-dismiss="modal" class="btn">Close</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+### Modal content source
+
+There are three options for populating the contents of the modal, controlled by the `modal_type` option:
+- **iframe** (default) - populates modal with iframe, iframe.src set to event.url
+- **ajax** - gets html from event.url, this is useful when you just have a snippet of html and want to take advantage of styles in the calendar page
+- **template** - will render a template (example in tmpls/modal.html) that gets the `event` and a reference to the `calendar` object.
+
+### Modal title
+
+The modal title can be customized by defining the `modal_title` option as a function. This function will receive the event as its only parameter. For example, this could be used to set the title of the modal to the title of the event:
+
+	modal_title: function(event) { return event.title }
+
+A calendar set up to use modals would look like this:
+
+	$("#calendar").calendar({modal : "#events-modal", modal_type : "ajax", modal_title : function (e) { return e.title }})
+
